@@ -80,11 +80,14 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
 
     def forward(self, x, emb, context=None):
         for layer in self:
-            if isinstance(layer, TimestepBlock):
-                x = layer(x, emb)
-            elif isinstance(layer, SpatialTransformer):
-                x = layer(x, context)
+            if isinstance(layer, TimestepBlock):    # not used
+                print("TimestepEmbedSequential, TimestepBlock")
+                x = layer(x, emb)   # emb: text embedding
+            elif isinstance(layer, SpatialTransformer): # seems to be the only one that's used
+                print("TimestepEmbedSequential, SpatialTransformer")
+                x = layer(x, context)   # context: 
             else:
+                print("TimestepEmbedSequential, else")
                 x = layer(x)
         return x
 
@@ -471,6 +474,8 @@ class UNetModel(nn.Module):
         num_attention_blocks=None
     ):
         super().__init__()
+        print("disable_self_attentions", disable_self_attentions)
+        print("use_spatial_transformer", use_spatial_transformer)
         if use_spatial_transformer:
             assert context_dim is not None, 'Fool!! You forgot to include the dimension of your cross-attention conditioning...'
 
@@ -575,7 +580,7 @@ class UNetModel(nn.Module):
 
                     if not exists(num_attention_blocks) or nr < num_attention_blocks[level]:
                         layers.append(
-                            AttentionBlock(
+                            AttentionBlock( # not used
                                 ch,
                                 use_checkpoint=use_checkpoint,
                                 num_heads=num_heads,

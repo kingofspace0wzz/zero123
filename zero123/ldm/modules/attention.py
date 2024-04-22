@@ -212,8 +212,8 @@ class BasicTransformerBlock(nn.Module):
         return checkpoint(self._forward, (x, context), self.parameters(), self.checkpoint)
 
     def _forward(self, x, context=None):
-        x = self.attn1(self.norm1(x), context=context if self.disable_self_attn else None) + x
-        x = self.attn2(self.norm2(x), context=context) + x
+        x = self.attn1(self.norm1(x), context=context if self.disable_self_attn else None) + x  # do self attention first
+        x = self.attn2(self.norm2(x), context=context) + x  # then do cross attention
         x = self.ff(self.norm3(x)) + x
         return x
 

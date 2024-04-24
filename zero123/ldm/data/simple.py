@@ -288,7 +288,9 @@ class ObjaverseData(Dataset):
 
         data = {}
         total_view = self.total_view
-        index_target, index_cond = random.sample(range(total_view), 2) # without replacement
+        # NOTE: changed to pulling 5 views: 1 target and 4 conditions
+        sampled_indices = random.sample(range(total_view), 5) # without replacement 
+        index_target, indices_cond = sampled_indices[0], sampled_indices[1:]
         filename = os.path.join(self.root_dir, self.paths[index])
 
         # print(self.paths[index])
@@ -300,23 +302,26 @@ class ObjaverseData(Dataset):
 
         try:
             target_im = self.process_im(self.load_im(os.path.join(filename, '%03d.png' % index_target), color))
-            cond_im = self.process_im(self.load_im(os.path.join(filename, '%03d.png' % index_cond), color))
+            cond_images = [self.process_im(self.load_im(os.path.join(filename, '%03d.png' % index_cond), color)) for index_cond in indices_cond]  # NOTE: changed from simgle image to a list of images
+            cond_images = np.stack(cond_images, axis=0) # (num_cond, H, W, C)
             target_RT = np.load(os.path.join(filename, '%03d.npy' % index_target))
-            cond_RT = np.load(os.path.join(filename, '%03d.npy' % index_cond))
+            cond_RTs = [np.load(os.path.join(filename, '%03d.npy' % index_cond)) for index_cond in indices_cond]  # NOTE: changed from a simgle RT to a list of RTs
+            cond_RTs = np.stack(cond_RTs, axis=0) # (num_cond, 4, 4)
         except:
             # very hacky solution, sorry about this
             filename = os.path.join(self.root_dir, '692db5f2d3a04bb286cb977a7dba903e_1') # this one we know is valid
             target_im = self.process_im(self.load_im(os.path.join(filename, '%03d.png' % index_target), color))
-            cond_im = self.process_im(self.load_im(os.path.join(filename, '%03d.png' % index_cond), color))
+            cond_images = [self.process_im(self.load_im(os.path.join(filename, '%03d.png' % index_cond), color)) for index_cond in indices_cond]  # NOTE: changed from simgle image to a list of images
             target_RT = np.load(os.path.join(filename, '%03d.npy' % index_target))
-            cond_RT = np.load(os.path.join(filename, '%03d.npy' % index_cond))
+            cond_RTs = [np.load(os.path.join(filename, '%03d.npy' % index_cond)) for index_cond in indices_cond]
             target_im = torch.zeros_like(target_im)
-            cond_im = torch.zeros_like(cond_im)
+            cond_images = [torch.zeros_like(target_im) for _ in range(len(indices_cond))]
 
         data["image_target"] = target_im
-        data["image_cond"] = cond_im
-        data["T"] = self.get_T(target_RT, cond_RT)
+        data["image_cond"] = cond_images   # TODO: change to (num_cond, H, W, C)
+        data["T"] = torch.stack([self.get_T(target_RT, cond_RT) for cond_RT in cond_RTs], dim=0)  # (num_cond, 4)
 
+        # NOTE: safe to ignore this since ObjaverseDataModuleFromConfig.train_dataloader initializes ObjaverseData without passing `postprocess`
         if self.postprocess is not None:
             data = self.postprocess(data)
 

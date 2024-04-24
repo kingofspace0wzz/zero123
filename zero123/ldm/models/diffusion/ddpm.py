@@ -617,6 +617,7 @@ class LatentDiffusion(DDPM):
         return self.scale_factor * z
 
     def get_learned_conditioning(self, c):
+        # TODO: this is where the image encoder is called
         if self.cond_stage_forward is None:
             if hasattr(self.cond_stage_model, 'encode') and callable(self.cond_stage_model.encode):
                 c = self.cond_stage_model.encode(c)
@@ -722,8 +723,8 @@ class LatentDiffusion(DDPM):
     @torch.no_grad()
     def get_input(self, batch, k, return_first_stage_outputs=False, force_c_encode=False,
                   cond_key=None, return_original_cond=False, bs=None, uncond=0.05):
-        x = super().get_input(batch, k)
-        T = batch['T'].to(memory_format=torch.contiguous_format).float()
+        x = super().get_input(batch, k)  # (B, C, H, W)
+        T = batch['T'].to(memory_format=torch.contiguous_format).float()  # (B, num_cond, 4)
         
         if bs is not None:
             x = x[:bs]
@@ -733,23 +734,34 @@ class LatentDiffusion(DDPM):
         encoder_posterior = self.encode_first_stage(x)
         z = self.get_first_stage_encoding(encoder_posterior).detach()
         cond_key = cond_key or self.cond_stage_key
+
+        # NOTE: this will get the image conditioning using batch['image_cond']
+        # xc (context) should be a batch of conditional images (B, num_cond, 3, H, W)
         xc = super().get_input(batch, cond_key).to(self.device)
         if bs is not None:
             xc = xc[:bs]
+        B, num_cond, C, H, W = xc.shape
+        xc = rearrange(xc, 'b n c h w -> (b n) c h w')  # rearrange to (B * num_cond, C, H, W) for CLIP encoder
         cond = {}
 
         # To support classifier-free guidance, randomly drop out only text conditioning 5%, only image conditioning 5%, and both 5%.
         random = torch.rand(x.size(0), device=x.device)
         prompt_mask = rearrange(random < 2 * uncond, "n -> n 1 1")
         input_mask = 1 - rearrange((random >= uncond).float() * (random < 3 * uncond).float(), "n -> n 1 1 1")
+        
+        # using FrozenCLIPImageEmbedder as the conditional_stage_model, this will be a zeros vector 
+        # due to FrozenCLIPImageEmbedder.forward() implementation
         null_prompt = self.get_learned_conditioning([""])
 
         # z.shape: [8, 4, 64, 64]; c.shape: [8, 1, 768]
         # print('=========== xc shape ===========', xc.shape)
         with torch.enable_grad():
+            # clip_emb: (B*num_cond, 1, 768)
             clip_emb = self.get_learned_conditioning(xc).detach()
+            clip_emb = clip_emb.squeeze(1)  # (B*num_cond, 1, 768)
+            clip_emb = rearrange(clip_emb, '(b n) c -> b n c', b=B, n=num_cond)  # (B, num_cond, 768)
             null_prompt = self.get_learned_conditioning([""]).detach()
-            cond["c_crossattn"] = [self.cc_projection(torch.cat([torch.where(prompt_mask, null_prompt, clip_emb), T[:, None, :]], dim=-1))]
+            cond["c_crossattn"] = [self.cc_projection(torch.cat([torch.where(prompt_mask, null_prompt, clip_emb), T], dim=-1))]
         cond["c_concat"] = [input_mask * self.encode_first_stage((xc.to(self.device))).mode().detach()]
         out = [z, cond]
         if return_first_stage_outputs:

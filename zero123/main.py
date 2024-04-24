@@ -706,7 +706,7 @@ if __name__ == "__main__":
                         input_weight.zero_()
                         input_weight[:, :4, :, :].copy_(old_state[input_key])
                         old_state[input_key] = torch.nn.parameter.Parameter(input_weight)
-
+            # NOTE: strict=False ignores missing keys; allows for extra keys, so loading weights on modified model is safe
             m, u = model.load_state_dict(old_state, strict=False)
 
             if len(m) > 0:

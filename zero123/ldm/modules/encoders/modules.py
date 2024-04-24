@@ -379,6 +379,7 @@ class FrozenCLIPImageEmbedder(AbstractEncoder):
         return self.model.encode_image(self.preprocess(x)).float()
 
     def encode(self, im):
+        # a batch of images (B, 3, H, W)
         return self(im).unsqueeze(1)
 
 from torchvision import transforms

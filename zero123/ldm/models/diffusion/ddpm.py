@@ -527,6 +527,10 @@ class LatentDiffusion(DDPM):
         nn.init.eye_(list(self.cc_projection.parameters())[0][:768, :768])
         nn.init.zeros_(list(self.cc_projection.parameters())[1])
         self.cc_projection.requires_grad_(True)
+
+        # linear layer for projecting the position information to the same dimension as CLIP
+        self.T_projection = nn.Linear(4, 768)   # FIXME: check / update the input dimension
+        self.T_projection.requires_grad_(True)
         
         self.clip_denoised = False
         self.bbox_tokenizer = None
@@ -723,7 +727,7 @@ class LatentDiffusion(DDPM):
     def get_input(self, batch, k, return_first_stage_outputs=False, force_c_encode=False,
                   cond_key=None, return_original_cond=False, bs=None, uncond=0.05):
         x = super().get_input(batch, k)
-        T = batch['T'].to(memory_format=torch.contiguous_format).float()
+        T = batch['T'].to(memory_format=torch.contiguous_format).float()    # [BS, 4] TODO: check if this is correct
         
         if bs is not None:
             x = x[:bs]
@@ -749,7 +753,11 @@ class LatentDiffusion(DDPM):
         with torch.enable_grad():
             clip_emb = self.get_learned_conditioning(xc).detach()
             null_prompt = self.get_learned_conditioning([""]).detach()
-            cond["c_crossattn"] = [self.cc_projection(torch.cat([torch.where(prompt_mask, null_prompt, clip_emb), T[:, None, :]], dim=-1))]
+            # TODO: change line below, project T's last dim to 768 then concat along dim=1
+            cc_projected = self.cc_projection(torch.cat([torch.where(prompt_mask, null_prompt, clip_emb), T[:, None, :]], dim=-1))  # shape: [BS, 1, 768]
+            T_projected = self.T_projection(T[:, None, :])  # shape: [BS, 1, 768]
+            # concat along dim=1
+            cond["c_crossattn"] = [torch.cat([cc_projected, T_projected], dim=1)]
         cond["c_concat"] = [input_mask * self.encode_first_stage((xc.to(self.device))).mode().detach()]
         out = [z, cond]
         if return_first_stage_outputs:

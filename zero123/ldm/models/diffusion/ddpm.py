@@ -411,6 +411,8 @@ class DDPM(pl.LightningModule):
             lr = self.optimizers().param_groups[0]['lr']
             self.log('lr_abs', lr, prog_bar=True, logger=True, on_step=True, on_epoch=False)
 
+        self.log("train/loss", loss, prog_bar=True, logger=True, on_step=True, on_epoch=True)
+
         return loss
 
     @torch.no_grad()

@@ -197,6 +197,7 @@ class NoisyLatentImageClassifier(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         loss, *_ = self.shared_step(batch)
+        self.log('train/loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss
 
     def reset_noise_accs(self):
@@ -215,6 +216,7 @@ class NoisyLatentImageClassifier(pl.LightningModule):
             self.noisy_acc[t]['acc@1'].append(self.compute_top_k(logits, targets, k=1, reduction='mean'))
             self.noisy_acc[t]['acc@5'].append(self.compute_top_k(logits, targets, k=5, reduction='mean'))
 
+        self.log('val/loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss
 
     def configure_optimizers(self):

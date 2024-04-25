@@ -853,8 +853,8 @@ if __name__ == "__main__":
             from pytorch_lightning.trainer.connectors.checkpoint_connector import CheckpointConnector
             setattr(CheckpointConnector, "hpc_resume_path", None)
 
-        wandb_logger = WandbLogger(log_model="all")
-        trainer_kwargs["logger"].append(wandb_logger)
+        wandb_logger = WandbLogger(project="mmml-project", log_model="all")
+        trainer_kwargs["logger"] = [wandb_logger]
 
         trainer = Trainer.from_argparse_args(trainer_opt, **trainer_kwargs) # type: Trainer
         trainer.logdir = logdir  ###

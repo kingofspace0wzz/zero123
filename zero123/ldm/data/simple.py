@@ -235,10 +235,13 @@ class ObjaverseData(Dataset):
             self.paths = json.load(f)
             
         total_objects = len(self.paths)
+        # TODO: modify this if we want less data
+        TRAIN_PORTION = 0.25
         if validation:
             self.paths = self.paths[math.floor(total_objects / 100. * 99.):] # used last 1% as validation
         else:
-            self.paths = self.paths[:math.floor(total_objects / 100. * 99.)] # used first 99% as training
+            # randomly sample TRAIN_PORTION of the data
+            self.paths = random.sample(self.paths, math.floor(total_objects / 100. * TRAIN_PORTION))
         print('============= length of dataset %d =============' % len(self.paths))
         self.tform = image_transforms
 

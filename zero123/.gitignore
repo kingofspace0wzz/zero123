@@ -19,3 +19,5 @@ logs
 im-examples/
 datasets
 scratch/
+wandb/
+__MACOSX/

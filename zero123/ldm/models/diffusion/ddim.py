@@ -198,9 +198,12 @@ class DDIMSampler(object):
                 c_in = dict()
                 for k in c:
                     if isinstance(c[k], list):
+                        if k == "c_crossattn" and unconditional_conditioning[k][0].shape[1] != c[k][0].shape[1]:  # monkeypatch for shape mismatch
+                            for i in range(len(c[k])):  # make each a zero tensor of the correct shape
+                                unconditional_conditioning[k][i] = torch.zeros_like(c[k][i])
                         c_in[k] = [torch.cat([
                             unconditional_conditioning[k][i],
-                            c[k][i]]) for i in range(len(c[k]))]
+                            c[k][i]]) for i in range(len(c[k]))]    # c[k]: List[Tensor]
                     else:
                         c_in[k] = torch.cat([
                                 unconditional_conditioning[k],

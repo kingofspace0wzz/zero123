@@ -72,9 +72,9 @@ model:
 data:
   target: ldm.data.simple.ObjaverseDataModuleFromConfig
   params:
-    root_dir: 'views_whole_sphere'
-    batch_size: 192
-    num_workers: 16
+    root_dir: '/data/tir/projects/tir7/user_data/xjia2/views_release'
+    batch_size: 24
+    num_workers: 4
     total_view: 4
     train:
       validation: False

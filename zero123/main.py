@@ -21,6 +21,7 @@ from pytorch_lightning.utilities import rank_zero_info
 
 from ldm.data.base import Txt2ImgIterableBaseDataset
 from ldm.util import instantiate_from_config
+from ldm.modules.attention import CrossAttention
 
 MULTINODE_HACKS = False
 
@@ -709,6 +710,29 @@ if __name__ == "__main__":
                         old_state[input_key] = torch.nn.parameter.Parameter(input_weight)
 
             m, u = model.load_state_dict(old_state, strict=False)
+
+            def mark_cross_attention_trainable(model):
+                """
+                Recursively marks the parameters of CrossAttention modules in the model as trainable.
+
+                Args:
+                    model (nn.Module): The model containing CrossAttention modules.
+
+                Returns:
+                    None
+                """
+                for module in model.children():
+                    if isinstance(module, CrossAttention):
+                        for param in module.parameters():
+                            param.requires_grad = True
+                    mark_cross_attention_trainable(module)
+
+            for param in model.parameters():
+                param.requires_grad = False
+            
+            model.cc_projection.requires_grad = True
+            model.T_projection.requires_grad = True
+            mark_cross_attention_trainable(model)
 
             if len(m) > 0:
                 rank_zero_print("missing keys:")

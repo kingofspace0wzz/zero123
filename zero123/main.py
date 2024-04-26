@@ -911,10 +911,17 @@ if __name__ == "__main__":
                 pudb.set_trace()
 
 
-        import signal
+        import signal, threading, os
+        from checkpoint_code import send_ckpt_signal
 
+        # bind signal handler functions
         signal.signal(signal.SIGUSR1, melk)
         signal.signal(signal.SIGUSR2, divein)
+
+        # activate periodic checkpointing
+        thread = threading.Thread(target=send_ckpt_signal, args=(os.getpid(),))
+        thread.daemon = True
+        thread.start()
 
         # run
         if opt.train:

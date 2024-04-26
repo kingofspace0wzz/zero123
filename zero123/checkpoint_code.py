@@ -2,7 +2,7 @@ import os
 import signal
 import time
 
-def send_signal(pid):
+def send_ckpt_signal(pid):
     while True:
         print("Sending SIGUSR1 to process with ID:", pid)
         os.kill(pid, signal.SIGUSR1)
@@ -10,4 +10,4 @@ def send_signal(pid):
 
 if __name__ == "__main__":
     pid = int(input("Enter the process ID: "))
-    send_signal(pid)
+    send_ckpt_signal(pid)

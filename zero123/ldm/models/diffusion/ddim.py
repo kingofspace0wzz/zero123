@@ -199,7 +199,7 @@ class DDIMSampler(object):
                 for k in c:
                     if isinstance(c[k], list):
                         c_in[k] = [torch.cat([
-                            unconditional_conditioning[k][i],
+                            torch.zeros_like(c[k][i]),  # it was unconditional_conditioning[k][i] before, assuming there's only one context per batch (B, 1, 768). But now context is (B, num_cond, 768) and unconditional_conditioning must mirror that shape
                             c[k][i]]) for i in range(len(c[k]))]
                     else:
                         c_in[k] = torch.cat([

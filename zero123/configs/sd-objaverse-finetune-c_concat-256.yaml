@@ -114,4 +114,4 @@ lightning:
     benchmark: True
     val_check_interval: 5000000 # really sorry
     num_sanity_val_steps: 0
-    accumulate_grad_batches: 1
+    accumulate_grad_batches: 1  # accumulate gradient every `accumulate_grad_batches` batches
